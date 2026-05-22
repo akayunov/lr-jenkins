@@ -1,0 +1,46 @@
+networks:
+  jenkins:
+    driver: bridge
+
+volumes:
+  jenkins-data:
+
+services:
+  jenkins-master:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+    image: lr-jenkins-master:1.0.0
+    networks:
+      - jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+    restart: unless-stopped
+
+  jenkins-agent1:
+    build:
+      context: .
+      dockerfile: Dockerfile.agent
+    image: lr-jenkins-agent:1.0.0
+    privileged: true
+    networks:
+      - jenkins
+    ports:
+      - "127.0.0.1:2376:2376"
+    restart: unless-stopped
+    depends_on:
+      - jenkins-master
+
+  jenkins-agent2:
+    image: lr-jenkins-agent:1.0.0 # Использует уже собранный образ от первого агента
+    privileged: true
+    networks:
+      - jenkins
+    ports:
+      - "127.0.0.1:2377:2376"
+    restart: unless-stopped
+    depends_on:
+      - jenkins-master

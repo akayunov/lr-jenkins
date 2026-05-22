@@ -1,0 +1,173 @@
+pipeline {
+    agent {
+        label 'dind'
+    }
+    options {
+        // Timeout counter starts AFTER agent is allocated
+        timeout(time: 100, unit: 'SECONDS')
+        disableConcurrentBuilds()
+        preserveStashes()
+        retry(1)
+        timestamps()
+    }
+    environment {
+        ENV_VAR1 = 'value of env var 1'
+        GH_ACCESS_KEY = credentials('github-read-token')
+    }
+    parameters {
+        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+        text(name: 'BIOGRAPHY', defaultValue: '', description: 'Enter some information about the person')
+        booleanParam(name: 'TOGGLE', defaultValue: true, description: 'Toggle this value')
+        choice(name: 'CHOICE', choices: ['One', 'Two', 'Three'], description: 'Pick something')
+        password(name: 'PASSWORD', defaultValue: 'SECRET', description: 'Enter a password')
+    }
+
+    triggers {
+        cron('H */4 * * 1-5')
+        pollSCM('H */4 * * 1-5')
+        upstream(upstreamProjects: 'job1,job2', threshold: hudson.model.Result.SUCCESS)
+    }
+
+    stages {
+        /* "Build" and "Test" stages omitted */
+
+        stage('Stage 1') {
+            steps {
+                echo '🎉 Ура! Stage 1'
+                sh 'printenv'
+                sh 'echo "CREDS $GH_ACCESS_KEY"'
+                sh 'echo "CREDS_USER $GH_ACCESS_KEY_USR"'
+                sh 'echo "CREDS_PASSWD $GH_ACCESS_KEY_PSW"'
+
+                echo "Hello ${params.PERSON}"
+                echo "Biography: ${params.BIOGRAPHY}"
+                echo "Toggle: ${params.TOGGLE}"
+                echo "Choice: ${params.CHOICE}"
+                echo "Password: ${params.PASSWORD}"
+            }
+        }
+
+        stage('Stage 2') {
+            options {
+                timeout(time: 100, unit: 'HOURS')
+                retry(1)
+            }
+            steps {
+                echo '🎉 Ура! Stage 2'
+            }
+        }
+
+        stage('Stage 3') {
+            steps {
+                /* input {
+                    message "Should we continue?"
+                    ok "Yes, we should."
+                    submitter "alice,bob"
+                    parameters {
+                        string(name: 'PERSON', defaultValue: 'Mr Jenkins', description: 'Who should I say hello to?')
+                    }
+                } */
+                echo '🎉 Ура! Stage 3'
+            }
+        }
+
+        stage('when stage') {
+            when {
+                branch 'production'
+                environment name: 'DEPLOY_TO', value: 'production'
+                expression { BRANCH_NAME ==~ /(production|staging)/ }
+                anyOf {
+                    environment name: 'DEPLOY_TO', value: 'production'
+                    environment name: 'DEPLOY_TO', value: 'staging'
+                }
+            }
+            steps {
+                echo 'Условия выполнены, запускаем stage'
+            }
+        }
+
+        stage('stage in stage') {
+            stages {
+                stage('sub sub stage'){
+                    steps {
+                        echo '🎉 Ура! Sub stage'
+                        script {
+                            def browsers = ['chrome', 'firefox']
+                            for (int i = 0; i < browsers.size(); ++i) {
+                                echo "Testing the script ${browsers[i]} browser"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Parallel stage') {
+            parallel {
+                stage('Parallel Branch A') {
+                    agent any
+                    steps {
+                        echo "On Branch A"
+                    }
+                }
+                stage('Parallel Branch B') {
+                    agent any
+                    steps {
+                        echo "On Branch B"
+                    }
+                }
+            }
+        }
+
+        stage('Matrix stage') {
+            matrix {
+                axes {
+                    axis {
+                        name 'PLATFORM'
+                        values 'linux', 'mac', 'windows'
+                    }
+                    axis {
+                        name 'BROWSER'
+                        values 'chrome', 'edge', 'firefox', 'safari'
+                    }
+                    axis {
+                        name 'ARCHITECTURE'
+                        values '32-bit', '64-bit'
+                    }
+                }
+                excludes {
+                    exclude {
+                        axis {
+                            name 'PLATFORM'
+                            values 'mac'
+                        }
+                        axis {
+                            name 'ARCHITECTURE'
+                            values '32-bit'
+                        }
+                    }
+                }
+                stages {
+                    stage('stage in matrix') {
+                        steps {
+                            echo "Do Build for ${PLATFORM} - ${ARCHITECTURE} - ${BROWSER}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always { echo 'I will always say Hello again!' }
+        changed { echo 'I will changed say Hello again!' }
+        fixed { echo 'I will fixed say Hello again!' }
+        regression { echo 'I will regression say Hello again!' }
+        aborted { echo 'I will aborted say Hello again!' }
+        failure { echo 'I will failure say Hello again!' }
+        success { echo 'I will success say Hello again!' }
+        unstable { echo 'I will unstable say Hello again!' }
+        unsuccessful { echo 'I will unsuccessful say Hello again!' }
+        cleanup { echo 'I will cleanup say Hello again!' }
+    }
+}

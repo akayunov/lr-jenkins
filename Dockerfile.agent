@@ -1,0 +1,30 @@
+FROM docker:dind
+
+# Переключаемся на root для настройки системы
+USER root
+
+# Установка Java, curl и OpenSSH сервера
+RUN apk update && apk add --no-cache openjdk21 curl openssh
+
+# Генерируем необходимые хост-ключи для работы SSH-демона
+RUN ssh-keygen -A
+
+# Создаем пользователя jenkins, домашнюю директорию и добавляем его в группу docker
+RUN adduser -D -h /home/jenkins -s /bin/sh jenkins && \
+    addgroup jenkins docker && \
+    passwd -u jenkins
+
+# Создаем папку .ssh для пользователя jenkins со строгими правами (700)
+RUN mkdir -p /home/jenkins/.ssh && chmod 700 /home/jenkins/.ssh
+
+# Задаем рабочую директорию внутри домашней папки jenkins
+WORKDIR /home/jenkins/agent
+
+# Меняем владельца всех созданных папок на jenkins, чтобы у SSH не было конфликтов прав
+RUN chown -R jenkins:jenkins /home/jenkins
+
+# Открываем порт 22 для SSH (раскомментировано, чтобы порт был виден в Docker)
+EXPOSE 22
+
+# Запуск Docker-демона в фоне и SSH-сервера на переднем плане
+CMD ["sh", "-c", "dockerd-entrypoint.sh & exec /usr/sbin/sshd -D"]

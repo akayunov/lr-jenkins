@@ -1,0 +1,19 @@
+node('dind') {
+    stage('Example1') {
+        // Подстраховка: если BRANCH_NAME нет, берем GIT_BRANCH
+        def branch = env.BRANCH_NAME ?: env.GIT_BRANCH
+
+        if (branch == 'master' || branch == 'origin/master') {
+            echo 'I only execute on the master branch'
+        } else {
+            echo 'I execute elsewhere'
+        }
+
+        // Исправлен синтаксис кавычек и команда заменена на echo
+        sh "echo 'Текущая ветка: ${branch}' > archive.txt"
+        build job: 'first_folder/PipelineFromSCM', parameters: [string(name: 'test choise parameter', value: '1'), booleanParam(name: 'my boolen parameter', value: false)]
+    }
+    stage('Archive') {
+        archiveArtifacts artifacts: 'archive.txt', fingerprint: true, followSymlinks: false
+    }
+}

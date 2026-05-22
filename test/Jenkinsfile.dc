@@ -1,0 +1,19 @@
+pipeline {
+    agent {
+        label 'dind'
+    }
+    stages {
+        stage('Stage 1') {
+            steps{
+                sh 'docker compose -f test/docker-compose-test.yml up -d --wait'
+                sh 'docker compose -f test/docker-compose-test.yml ps'
+                sh 'docker compose -f test/docker-compose-test.yml exec -T test python --version'
+            }
+        }
+    }
+    post {
+        always {
+            sh 'docker compose -f test/docker-compose-test.yml down'
+        }
+    }
+}

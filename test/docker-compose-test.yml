@@ -1,0 +1,27 @@
+networks:
+  test-net:
+    driver: bridge
+
+volumes:
+  test-data:
+
+services:
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    image: test:1.0.0
+    networks:
+      - test-net
+    ports:
+      - "80:80"
+    volumes:
+      - test-data:/var/lib/test
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+
